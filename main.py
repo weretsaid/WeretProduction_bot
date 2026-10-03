@@ -33,7 +33,7 @@ CONFIG_FILE = Path("config.json")
 DEFAULT_CONFIG = {
     "BOT_TOKEN": "8874041800:AAHQ4xne8zQE_9EClNIgnc8ig8IsIrLN9uc",
     "ADMIN_IDS": [1940800577],
-    "REVIEWS_CHANNEL": "@your_reviews_channel",
+    "REVIEWS_CHANNEL": "@WeretProduction",
     "CONTACT_USERNAME": "@Weretyol",
 }
 
@@ -198,7 +198,6 @@ def _inline_menu(rows: list[tuple[str, str]], width: int = 2) -> InlineKeyboardM
 
 def main_menu() -> InlineKeyboardMarkup:
     return _inline_menu([
-        ("👤 Профиль", "menu:profile"),
         ("🛒 Заказать", "menu:order"),
         ("✨ Отзывы", "menu:reviews"),
         ("📋 Список заказов", "menu:orders"),
@@ -399,6 +398,16 @@ def format_order_for_admin(order: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+async def delete_callback_message(callback: CallbackQuery) -> None:
+    """Удаляет старое сообщение с inline-кнопками перед открытием нового экрана."""
+    try:
+        if callback.message:
+            await callback.message.delete()
+    except Exception as e:
+        # Сообщение могло быть уже удалено/недоступно — это не должно ломать навигацию.
+        logging.debug("Cannot delete callback message: %s", e)
+
+
 def escape_html(value: Any) -> str:
     text = str(value)
     return (
@@ -531,48 +540,49 @@ async def cancel(message: Message, state: FSMContext) -> None:
 @router.callback_query(F.data == "menu:back")
 async def cb_back(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await cancel(callback.message, state)
-
-
-@router.callback_query(F.data == "menu:profile")
-async def cb_profile(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
-    await profile(callback.message, state)
 
 
 @router.callback_query(F.data == "menu:order")
 async def cb_order_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await order_menu(callback.message, state)
 
 
 @router.callback_query(F.data == "menu:orders")
 async def cb_order_list(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await order_list(callback.message, state)
 
 
 @router.callback_query(F.data == "menu:reviews")
 async def cb_reviews(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await reviews(callback.message, state)
 
 
 @router.callback_query(F.data == "menu:prices")
 async def cb_prices(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await prices(callback.message, state)
 
 
 @router.callback_query(F.data == "menu:settings")
 async def cb_settings(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await settings(callback.message, state)
 
 
 @router.callback_query(F.data == "menu:support")
 async def cb_support(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await support_start(callback.message, state)
 
 
@@ -582,6 +592,7 @@ async def cb_order_type(callback: CallbackQuery, state: FSMContext) -> None:
     order_type = callback.data.split(":", 1)[1]
     if order_type not in TYPE_DATA:
         return
+    await delete_callback_message(callback)
     await begin_order(callback.message, state, order_type)
 
 
@@ -591,6 +602,7 @@ async def cb_donate(callback: CallbackQuery, state: FSMContext) -> None:
     if text not in {"yes", "no"}:
         await callback.answer("Выберите вариант кнопкой.", show_alert=True)
         return
+    await delete_callback_message(callback)
     donate = "Имеется" if text == "yes" else "Не имеется"
     await state.update_data(donate=donate)
     data = await state.get_data()
@@ -615,6 +627,7 @@ async def cb_hosting(callback: CallbackQuery, state: FSMContext) -> None:
     if text not in {"yes", "no"}:
         await callback.answer("Выберите вариант кнопкой.", show_alert=True)
         return
+    await delete_callback_message(callback)
     await state.update_data(hosting="Нужен" if text == "yes" else "Не нужен")
     data = await state.get_data()
     if data.get("order_type") == "bot":
@@ -640,6 +653,7 @@ async def cb_platform(callback: CallbackQuery, state: FSMContext) -> None:
     if not value:
         await callback.answer("Выберите платформу кнопкой.", show_alert=True)
         return
+    await delete_callback_message(callback)
     await state.update_data(platform=value)
     await finish_order(callback.message, state)
     await callback.answer()
@@ -647,6 +661,7 @@ async def cb_platform(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "settings:notifications")
 async def cb_toggle_notifications(callback: CallbackQuery) -> None:
+    await delete_callback_message(callback)
     await toggle_notifications(callback.message)
     await callback.answer()
 
@@ -654,30 +669,35 @@ async def cb_toggle_notifications(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "admin:back")
 async def cb_admin_back(callback: CallbackQuery) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await admin_help(callback.message)
 
 
 @router.callback_query(F.data == "admin:stats")
 async def cb_admin_stats(callback: CallbackQuery) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await admin_stats(callback.message)
 
 
 @router.callback_query(F.data == "admin:users")
 async def cb_admin_users(callback: CallbackQuery) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await admin_users(callback.message)
 
 
 @router.callback_query(F.data == "admin:orders")
 async def cb_admin_orders(callback: CallbackQuery) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await admin_orders(callback.message)
 
 
 @router.callback_query(F.data == "admin:commands")
 async def cb_admin_commands(callback: CallbackQuery) -> None:
     await callback.answer()
+    await delete_callback_message(callback)
     await admin_commands(callback.message)
 
 
@@ -688,21 +708,13 @@ async def cb_admin_commands(callback: CallbackQuery) -> None:
 @router.message(F.text == "👤 Профиль")
 async def profile(message: Message, state: FSMContext) -> None:
     await state.clear()
-    if is_banned(message.from_user.id):
+    uid = message.from_user.id
+    if is_banned(uid):
         return
-    u = get_user_record(message.from_user.id, message.from_user.username, message.from_user.full_name)
-    tg = f"@{u['username']}" if u.get("username") else "не указан"
-    text = (
-        "╭── 👤 ПРОФИЛЬ ──╮\n\n"
-        f"👥 Ник в ТГ: {escape_html(u.get('full_name') or 'не указан')}\n"
-        f"📱 Telegram: {escape_html(tg)}\n"
-        f"🆔 ID: <code>{u['id']}</code>\n"
-        f"📊 Покупок оформлено: {u.get('purchases', 0)}\n"
-        f"🔔 Уведомления: {'включены' if u.get('notifications', True) else 'выключены'}\n"
-        f"⛔ Бан: {escape_html(ban_text(message.from_user.id))}\n\n"
-        "╰────────────╯"
-    )
-    await message.answer(text, reply_markup=main_menu())
+    # Синхронизируем актуальные имя и username из Telegram,
+    # затем показываем тот же профиль, что и команда /profile.
+    get_user_record(uid, message.from_user.username, message.from_user.full_name)
+    await message.answer(profile_text_for(uid), reply_markup=main_menu())
 
 
 # ---------------------------------------------------------------------------
@@ -1298,6 +1310,7 @@ async def support_reply_start(callback: CallbackQuery, state: FSMContext) -> Non
     if not ticket:
         await callback.answer("Обращение не найдено.", show_alert=True)
         return
+    await delete_callback_message(callback)
     await state.clear()
     await state.update_data(ticket_id=ticket_id)
     await state.set_state(SupportReplyForm.text)
@@ -1339,6 +1352,7 @@ async def support_ignore(callback: CallbackQuery) -> None:
     if not ticket:
         await callback.answer("Обращение не найдено.", show_alert=True)
         return
+    await delete_callback_message(callback)
     ticket["status"] = "ignored"
     save_db()
     await notify_user(
